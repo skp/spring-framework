@@ -28,7 +28,6 @@ import reactor.core.publisher.Mono;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.codec.Encoder;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpOutputMessage;
@@ -47,6 +46,7 @@ import org.springframework.util.Assert;
  * @author Arjen Poutsma
  * @author Sebastien Deleuze
  * @author Rossen Stoyanchev
+ * @author Brian Clozel
  * @since 5.0
  */
 public class EncoderHttpMessageWriter<T> implements HttpMessageWriter<T> {
@@ -105,13 +105,12 @@ public class EncoderHttpMessageWriter<T> implements HttpMessageWriter<T> {
 
 		if (inputStream instanceof Mono) {
 			HttpHeaders headers = message.getHeaders();
-			if (headers.getContentLength() < 0 && !headers.containsKey(HttpHeaders.TRANSFER_ENCODING)) {
-				return Mono.from(body)
-						.flatMap(dataBuffer -> {
-							headers.setContentLength(dataBuffer.readableByteCount());
-							return message.writeWith(Mono.just(dataBuffer));
-						});
-			}
+			return Mono.from(body)
+					.defaultIfEmpty(message.bufferFactory().wrap(new byte[0]))
+					.flatMap(buffer -> {
+						headers.setContentLength(buffer.readableByteCount());
+						return message.writeWith(Mono.just(buffer));
+					});
 		}
 
 		return (isStreamingMediaType(contentType) ?
