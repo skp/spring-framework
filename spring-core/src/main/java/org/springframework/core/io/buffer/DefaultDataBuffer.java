@@ -215,6 +215,15 @@ public class DefaultDataBuffer implements DataBuffer {
 		return this;
 	}
 
+	@Override
+	public DataBuffer ensureCapacity(int length) {
+		if (length > writableByteCount()) {
+			int newCapacity = calculateCapacity(this.writePosition + length);
+			capacity(newCapacity);
+		}
+		return this;
+	}
+
 	private static ByteBuffer allocate(int capacity, boolean direct) {
 		return direct ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
 	}
@@ -294,10 +303,7 @@ public class DefaultDataBuffer implements DataBuffer {
 	@Override
 	public DefaultDataBuffer write(DataBuffer... buffers) {
 		if (!ObjectUtils.isEmpty(buffers)) {
-			ByteBuffer[] byteBuffers =
-					Arrays.stream(buffers).map(DataBuffer::asByteBuffer)
-							.toArray(ByteBuffer[]::new);
-			write(byteBuffers);
+			write(Arrays.stream(buffers).map(DataBuffer::asByteBuffer).toArray(ByteBuffer[]::new));
 		}
 		return this;
 	}
@@ -372,13 +378,6 @@ public class DefaultDataBuffer implements DataBuffer {
 		return new DefaultDataBufferOutputStream();
 	}
 
-	private void ensureCapacity(int length) {
-		if (length <= writableByteCount()) {
-			return;
-		}
-		int newCapacity = calculateCapacity(this.writePosition + length);
-		capacity(newCapacity);
-	}
 
 	/**
 	 * Calculate the capacity of the buffer.
@@ -431,7 +430,7 @@ public class DefaultDataBuffer implements DataBuffer {
 
 	@Override
 	public String toString() {
-		return String.format("DefaultDataBuffer (r: %d, w %d, c %d)",
+		return String.format("DefaultDataBuffer (r: %d, w: %d, c: %d)",
 				this.readPosition, this.writePosition, this.capacity);
 	}
 
